@@ -1,0 +1,33 @@
+{
+  "name": "sr_hagario_back",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/main.ts",
+    "start": "node dist/main.js"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.3",
+    "@types/eslint": "^8.44.7",
+    "@types/node": "^18.17.0",
+    "@typescript-eslint/eslint-plugin": "^6.11.0",
+    "@typescript-eslint/parser": "^6.11.0",
+    "autoprefixer": "^10.4.14",
+    "eslint": "^8.54.0",
+    "postcss": "^8.4.31",
+    "prettier": "^3.2.4",
+    "tsx": "^4.7.0",
+    "typescript": "^5.1.6"
+  },
+  "ct3aMetadata": {
+    "initVersion": "7.26.0"
+  },
+  "packageManager": "npm@10.2.4",
+  "dependencies": {
+    "@types/uuid": "^9.0.8",
+    "socket.io": "^4.7.4",
+    "uuid": "^9.0.1"
+  }
+}
