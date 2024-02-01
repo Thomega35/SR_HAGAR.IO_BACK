@@ -35,6 +35,7 @@ io.on("connect", (socket: Socket) => {
         const playery = Math.random() * board_height;
         players.set(uuid, { x: playerx, y: playery, score: 1, name: name, color: color });
         console.log("new player : " + uuid + " " + name + " " + color);
+        console.log(players);
         socket.emit("newPlayerPosition", Math.random() * board_width, Math.random() * board_height);
         users.push(socket);
     });
@@ -45,7 +46,6 @@ io.on("connect", (socket: Socket) => {
             player.x = x;
             player.y = y;
         }
-        // console.log("move : " + x + " " + y);
     });
 
     socket.on("eatFood", (uuid: string, foodId: string) => {
@@ -54,7 +54,17 @@ io.on("connect", (socket: Socket) => {
         if (player !== undefined && food !== undefined) {
             player.score += 1;
             foods.delete(foodId);
-            console.log("eat food : " + uuid + " " + foodId + " " + player + " " + food);
+            console.log("eat food : " + uuid + " " + foodId);
+        }
+    });
+
+    socket.on("eatPlayer", (uuid: string, playerId: string) => {
+        const player = players.get(uuid);
+        const player2 = players.get(playerId);
+        if (player !== undefined && player2 !== undefined && player.score > player2.score) {
+            player.score += player2.score;
+            players.delete(playerId);
+            console.log("eat player : " + uuid + " " + playerId);
         }
     });
 
@@ -80,7 +90,7 @@ setInterval(() => {
 }, 1000 / 60);
 
 setInterval(() => {
-    if (foods.size < 8) {
+    if (foods.size < 30) {
         if (Math.random() < 0.1) {
             const foodx = Math.random() * board_width;
             const foody = Math.random() * board_height;
