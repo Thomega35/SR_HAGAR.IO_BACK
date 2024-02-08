@@ -5,7 +5,9 @@ const io = new Server(3003, {
     cors: {
         origin: "*",
     },
+    transports: ["websocket"],
 });
+
 
 interface PlayerObj {
     x: number;
@@ -23,8 +25,10 @@ interface Food {
 
 // map player : id -> player
 const players: Map<string, PlayerObj> = new Map();
+const countRequestPlayers: Map<string, number> = new Map();
 const foods: Map<string, Food> = new Map();
-const users: Array<Socket> = [];
+const maliciousfood: Map<string, Food> = new Map();
+let users: Array<Socket> = [];
 const board_width = 1000;
 const board_height = 1000;
 
@@ -35,7 +39,6 @@ io.on("connect", (socket: Socket) => {
         const playery = Math.random() * board_height;
         players.set(uuid, { x: playerx, y: playery, score: 1, name: name, color: color });
         console.log("new player : " + uuid + " " + name + " " + color);
-        console.log(players);
         socket.emit("newPlayerPosition", Math.random() * board_width, Math.random() * board_height);
         users.push(socket);
     });
@@ -43,18 +46,35 @@ io.on("connect", (socket: Socket) => {
     socket.on("move", (uuid: string, x: number, y: number) => {
         const player = players.get(uuid);
         if (player) {
-            player.x = x;
-            player.y = y;
+            if (Math.abs(player.x - x) < 3 || Math.abs(player.y - y) < 2) {
+                player.x = x;
+                if (player.x < 0) player.x = 0;
+                if (player.x > board_width) player.x = board_width;
+                player.y = y;
+                if (player.y < 0) player.y = 0;
+                if (player.y > board_height) player.y = board_height;
+            }
         }
+        countRequestPlayers.set(socket.id, (countRequestPlayers.get(socket.id)??0) + 1);
     });
 
     socket.on("eatFood", (uuid: string, foodId: string) => {
         const player = players.get(uuid);
         const food = foods.get(foodId);
-        if (player !== undefined && food !== undefined) {
+        if (player !== undefined && food !== undefined && Math.sqrt((player.x - food.x) ** 2 + (player.y - food.y) ** 2) < (scoreToSize(player.score)+4)){
             player.score += 1;
             foods.delete(foodId);
             console.log("eat food : " + uuid + " " + foodId);
+        }
+    });
+
+    socket.on("eatMaliciousFood", (uuid: string, foodId: string) => {
+        const player = players.get(uuid);
+        const food = maliciousfood.get(foodId);
+        if (player !== undefined && food !== undefined) {
+            player.score = player.score / 2;
+            maliciousfood.delete(foodId);
+            console.log("eat malicious food : " + uuid + " " + foodId);
         }
     });
 
@@ -83,12 +103,14 @@ io.on("connect", (socket: Socket) => {
 
 });
 
+// Update players position
 setInterval(() => {
     for (const user of users) {
         user.emit("updatePlayers", Array.from(players.entries()));
     }
 }, 1000 / 60);
 
+// Update food position
 setInterval(() => {
     if (foods.size < 30) {
         if (Math.random() < 0.1) {
@@ -103,3 +125,44 @@ setInterval(() => {
         user.emit("updateFood", Array.from(foods.entries()));
     }
 }, 1000 / 60);
+
+// Update malicious food position
+setInterval(() => {
+    if (maliciousfood.size < 2) {
+        if (Math.random() < 0.01) {
+            const foodx = Math.random() * board_width;
+            const foody = Math.random() * board_height;
+            const food = { x: foodx, y: foody };
+            maliciousfood.set(v4(), food);
+        }
+    }
+    
+    for (const user of users) {
+        user.emit("updateMaliciousFood", Array.from(maliciousfood.entries()));
+    }
+}, 1000 / 60);
+
+// Ban player if he sends too many requests
+setInterval(() => {
+    for (const [key, value] of countRequestPlayers) {
+        console.log(key + " " + value);
+        if (value > 800) {
+            const toban = users.find((user) => user.id === key);
+            users = users.filter((user) => user.id !== key);
+            toban?.disconnect();
+            console.log("ban : " + key);
+        }
+    }
+    for (const user of users) {
+        user.emit("updatePlayers", Array.from(players.entries()));
+        countRequestPlayers.clear();
+    }
+}, 3000);
+
+export function scoreToSize(score: number) {
+    return Math.sqrt(score * 50 / Math.PI) + 3;
+}
+
+export function distanceBetween(x1: number, y1: number, x2: number, y2: number) {
+    return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
+}
