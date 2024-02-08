@@ -26,6 +26,7 @@ interface Food {
 // map player : id -> player
 const players: Map<string, PlayerObj> = new Map();
 const countRequestPlayers: Map<string, number> = new Map();
+const socketToPlayer: Map<string, string> = new Map();
 const foods: Map<string, Food> = new Map();
 const maliciousfood: Map<string, Food> = new Map();
 let users: Array<Socket> = [];
@@ -38,8 +39,9 @@ io.on("connect", (socket: Socket) => {
         const playerx = Math.random() * board_width;
         const playery = Math.random() * board_height;
         players.set(uuid, { x: playerx, y: playery, score: 1, name: name, color: color });
+        socketToPlayer.set(socket.id, uuid);
         console.log("new player : " + uuid + " " + name + " " + color);
-        socket.emit("newPlayerPosition", Math.random() * board_width, Math.random() * board_height);
+        socket.emit("newPlayerPosition", playerx, playery);
         users.push(socket);
     });
 
@@ -90,15 +92,31 @@ io.on("connect", (socket: Socket) => {
 
     socket.on("Leave", (uuid: string) => {
         players.delete(uuid);
+        socketToPlayer.delete(socket.id);
+        players.delete(uuid);
+        socket.disconnect();
         console.log("leave : " + uuid);
     });
 
     socket.on("disconnect", () => {
-        console.log("disconnect");
+        players.delete(socketToPlayer.get(socket.id)??'');
+        socketToPlayer.delete(socket.id);
         const index = users.indexOf(socket);
         if (index > -1) {
             users.splice(index, 1);
         }
+        console.log("disconnect");
+    });
+
+    // on error
+    socket.on("error", (err) => {
+        players.delete(socketToPlayer.get(socket.id)??'');
+        socketToPlayer.delete(socket.id);
+        const index = users.indexOf(socket);
+        if (index > -1) {
+            users.splice(index, 1);
+        }
+        console.log("error : " + err);
     });
 
 });
@@ -145,10 +163,12 @@ setInterval(() => {
 // Ban player if he sends too many requests
 setInterval(() => {
     for (const [key, value] of countRequestPlayers) {
-        console.log(key + " " + value);
+        // console.log(key + " " + value);
         if (value > 800) {
             const toban = users.find((user) => user.id === key);
             users = users.filter((user) => user.id !== key);
+            players.delete(socketToPlayer.get(toban?.id??'')??'');
+            socketToPlayer.delete(toban?.id??'');
             toban?.disconnect();
             console.log("ban : " + key);
         }
