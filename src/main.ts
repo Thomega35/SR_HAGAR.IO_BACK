@@ -48,7 +48,7 @@ io.on("connect", (socket: Socket) => {
     socket.on("move", (uuid: string, x: number, y: number) => {
         const player = players.get(uuid);
         if (player) {
-            if (Math.abs(player.x - x) < 3 || Math.abs(player.y - y) < 2) {
+            if (Math.abs(player.x - x) < 2 || Math.abs(player.y - y) < 2) {
                 player.x = x;
                 if (player.x < 0) player.x = 0;
                 if (player.x > board_width) player.x = board_width;
@@ -57,6 +57,9 @@ io.on("connect", (socket: Socket) => {
                 if (player.y > board_height) player.y = board_height;
             }
         }
+        // console.log("move : " + uuid + " " + x + " " + y);
+        // console.log the ip of the player
+        // console.log("ip : " + socket.handshake.address);
         countRequestPlayers.set(socket.id, (countRequestPlayers.get(socket.id)??0) + 1);
     });
 
@@ -164,7 +167,7 @@ setInterval(() => {
 setInterval(() => {
     for (const [key, value] of countRequestPlayers) {
         // console.log(key + " " + value);
-        if (value > 800) {
+        if (value > 200) {
             const toban = users.find((user) => user.id === key);
             users = users.filter((user) => user.id !== key);
             players.delete(socketToPlayer.get(toban?.id??'')??'');
@@ -175,8 +178,8 @@ setInterval(() => {
     }
     for (const user of users) {
         user.emit("updatePlayers", Array.from(players.entries()));
-        countRequestPlayers.clear();
     }
+    countRequestPlayers.clear();
 }, 3000);
 
 export function scoreToSize(score: number) {
