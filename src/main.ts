@@ -17,18 +17,17 @@ interface PlayerObj {
     color: string;
 }
 
-interface Food {
+interface Position {
     x: number;
     y: number;
 }
-
 
 // map player : id -> player
 const players: Map<string, PlayerObj> = new Map();
 const countRequestPlayers: Map<string, number> = new Map();
 const socketToPlayer: Map<string, string> = new Map();
-const foods: Map<string, Food> = new Map();
-const maliciousfood: Map<string, Food> = new Map();
+const foods: Map<string, Position> = new Map();
+const maliciousfood: Map<string, Position> = new Map();
 let users: Array<Socket> = [];
 const board_width = 1000;
 const board_height = 1000;
